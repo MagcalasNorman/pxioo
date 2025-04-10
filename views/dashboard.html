@@ -29,6 +29,10 @@
                 <img src="img/theme-thumbnails/beer-thumb.png" alt="Beer Consumed">
                 <h3>Beer Consumed</h3>
             </div>
+            <div class="theme-card" data-theme="ai" data-settings="ai-settings">
+                <img src="img/theme-thumbnails/ai-thumb.png" alt="AI Chat">
+                <h3>AI Chat</h3>
+            </div>
         </section>
 
         <!-- Flags & Attendance Settings (unchanged) -->
@@ -164,7 +168,40 @@
             </div>
         </div>
 
-        <button id="update-values">Update Display</button>
+        <!-- AI Chat Settings -->
+        <div id="ai-settings" class="theme-settings">
+            <div class="settings-container">
+                <div class="settings-card" id="chat-interface">
+                    <h2>AI Chat Interface</h2>
+                    <div class="currency-selector">
+                        <label for="currency-select">Currency: </label>
+                        <select id="currency-select">
+                            <option value="USD">US Dollar (USD)</option>
+                            <option value="AUD">Australian Dollar (AUD)</option>
+                            <option value="PHP">Philippine Peso (PHP)</option>
+                            <option value="INR">Indian Rupee (INR)</option>
+                            <option value="COP">Colombian Peso (COP)</option>
+                        </select>
+                    </div>
+                    <div class="chat-wrapper">
+                            <div class="chat-messages" id="chat-messages"></div>
+                            <div class="chat-input-area">
+                                <input type="text" class="chat-input" id="user-input" placeholder="Type your message...">
+                                <button class="send-button" type="button" onclick="sendMessage()">
+                                    <span>Send</span>
+                                </button>
+                            </div>
+                            <div class="chat-stats">
+                                <div>Messages: <span id="messages-sent">0</span></div>
+                                <div>Tokens: <span id="tokens-used">0</span></div>
+                                <div>Cost: <span id="total-price">0.00</span></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        <button id="update-values" onclick="postKPIData()">Update Display</button>
         <div class="status-message"></div>
     </div>
 
@@ -182,18 +219,32 @@
             card.addEventListener('click', function() {
                 document.querySelectorAll('.theme-card, .theme-settings').forEach(el => el.classList.remove('active'));
                 this.classList.add('active');
-                document.getElementById(this.dataset.settings).classList.add('active');
-                fetchKPIData();
+                
+                // Hide update button for AI Chat theme
+                document.getElementById('update-values').style.display = 
+                    this.dataset.theme === 'ai_chat' ? 'none' : 'block';
+                    
+                // Show the appropriate settings panel
+                if (this.dataset.settings) {
+                    document.getElementById(this.dataset.settings).classList.add('active');
+                }
+                
+                if (this.dataset.theme !== 'ai_chat') {
+                    fetchKPIData();
+                }
             });
         });
 
         async function postKPIData() {
+            console.log('postKPIData function triggered'); // Debugging log
+
             const activeTheme = document.querySelector('.theme-card.active').dataset.theme;
-            const button = document.getElementById('update-values');
-            const statusMessage = document.querySelector('.status-message');
-            
+            const currency = document.getElementById('currency-select').value;
+            console.log('Updating display with currency:', currency); // Debug log
+
             const data = {
                 theme: activeTheme,
+                currency: currency, // Include currency in the data
                 background_color: hexToRgb(document.getElementById(
                     activeTheme === 'flags' ? 'background-color' : 'beer-bg-color'
                 ).value),
@@ -202,44 +253,19 @@
                 ).value)
             };
 
-            if (activeTheme === 'flags') {
-                data.green_flags = parseInt(document.getElementById('green-flags').value);
-                data.red_flags = parseInt(document.getElementById('red-flags').value);
-                data.attendance = parseInt(document.getElementById('attendance').value);
-                data.showDateTime = document.getElementById('toggle-date-time').checked;
-                data.country = document.getElementById('country-select').value;
-                data.line_color = hexToRgb(document.getElementById('line-color').value);
-            } else {
-                data.location = document.getElementById('beer-location').value;
-                data.beers_total_available = parseInt(document.getElementById('beers-total-available').value);
-                data.beers_consumed = parseInt(document.getElementById('beers-consumed').value);
-                data.beers_week = parseInt(document.getElementById('beers-week').value);
-                data.beers_month = parseInt(document.getElementById('beers-month').value);
-            }
+            console.log('Data being sent to the backend:', data); // Debugging log
 
             try {
-                button.disabled = true;
-                button.textContent = 'Updating...';
-                statusMessage.style.display = 'none';
-
                 const response = await fetch('/api/update-kpis', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(data)
                 });
 
-                if (!response.ok) throw new Error('Server error');
-                statusMessage.textContent = 'Display updated successfully!';
-                statusMessage.className = 'status-message success';
+                if (!response.ok) throw new Error('Failed to update display');
+                console.log('Display updated successfully');
             } catch (error) {
-                console.error('Error:', error);
-                statusMessage.textContent = 'Error updating display. Please try again.';
-                statusMessage.className = 'status-message error';
-            } finally {
-                statusMessage.style.display = 'block';
-                button.disabled = false;
-                button.textContent = 'Update Display';
-                setTimeout(() => statusMessage.style.display = 'none', 3000);
+                console.error('Error updating display:', error);
             }
         }
 
@@ -297,18 +323,209 @@
         async function fetchKPIData() {
             try {
                 const activeTheme = document.querySelector('.theme-card.active').dataset.theme;
-                const response = await fetch(`/api/kpi-data?theme=${activeTheme}`);
+                const currency = document.getElementById('currency-select').value; // Get selected currency
+                const response = await fetch(`/api/kpi-data?theme=${activeTheme}&currency=${currency}`);
                 const data = await response.json();
-                updateUI(data);
+
+                if (activeTheme === 'ai') {
+                    messagesSent = data.messages_sent || 0;
+                    tokensUsed = data.tokens_used || 0;
+                    usdPrice = parseFloat(data.total_price) || 0;
+
+                    // Update the price display with the selected currency
+                    document.getElementById('messages-sent').textContent = messagesSent;
+                    document.getElementById('tokens-used').textContent = tokensUsed;
+                    document.getElementById('total-price').textContent = formatCurrency(usdPrice, currency);
+                } else {
+                    updateUI(data);
+                }
             } catch (error) {
                 console.error('Error fetching data:', error);
             }
         }
 
+        let messagesSent = 0;
+        let tokensUsed = 0;
+
+        async function sendMessage() {
+            console.log('sendMessage function triggered'); // Debugging log
+
+            const userInput = document.getElementById('user-input');
+            const message = userInput.value.trim();
+            if (!message) {
+                console.log('No message to send'); // Debugging log
+                return;
+            }
+
+            const currency = document.getElementById('currency-select').value;
+            console.log('Selected currency:', currency); // Debugging log
+
+            // Append the user's message to the chat interface
+            const chatMessages = document.getElementById('chat-messages');
+            const userMessageDiv = document.createElement('div');
+            userMessageDiv.className = 'chat-message user-message';
+            userMessageDiv.textContent = message;
+            chatMessages.appendChild(userMessageDiv);
+
+            // Add a loading animation for the AI's response
+            const loadingDiv = document.createElement('div');
+            loadingDiv.className = 'chat-message loading-message';
+            loadingDiv.textContent = 'AI is typing...';
+            chatMessages.appendChild(loadingDiv);
+
+            // Scroll to the bottom of the chat
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+
+            // Clear the input box
+            userInput.value = '';
+
+            try {
+                const response = await fetch('/api/ai-chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        message: message,
+                        currency: currency  // Include currency in the request
+                    })
+                });
+
+                if (!response.ok) throw new Error('Failed to send message');
+
+                const data = await response.json();
+                console.log('Response data:', data); // Debugging log
+
+                // Remove the loading animation
+                chatMessages.removeChild(loadingDiv);
+
+                // Append the AI's response to the chat interface
+                const aiMessageDiv = document.createElement('div');
+                aiMessageDiv.className = 'chat-message ai-message';
+                aiMessageDiv.textContent = data.response;
+                chatMessages.appendChild(aiMessageDiv);
+
+                // Update the stats
+                document.getElementById('messages-sent').textContent = data.messages_sent;
+                document.getElementById('tokens-used').textContent = data.tokens_used;
+                document.getElementById('total-price').textContent = formatCurrency(data.total_price, data.currency);
+
+                // Scroll to the bottom of the chat
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+
+            } catch (error) {
+                console.error('Error in sendMessage:', error);
+
+                // Remove the loading animation
+                chatMessages.removeChild(loadingDiv);
+
+                // Append an error message to the chat interface
+                const errorMessageDiv = document.createElement('div');
+                errorMessageDiv.className = 'chat-message error-message';
+                errorMessageDiv.textContent = 'Error: Failed to send message.';
+                chatMessages.appendChild(errorMessageDiv);
+            }
+        }
+
+        const exchangeRates = {
+            USD: 1.0,
+            AUD: 1.50,
+            PHP: 56.23,
+            INR: 83.33,
+            COP: 4165.0
+        };
+
+        // Store the original USD price
+        let usdPrice = 0;
+
+        // Format currency properly
+        function formatCurrency(amount, currency) {
+            if (isNaN(amount) || amount === 0) {
+                return `${currency} 0.00`;
+            }
+            
+            const rate = exchangeRates[currency] || 1;
+            const converted = amount * rate;
+            
+            // Use symbols where available
+            const symbol = {
+                'USD': '$',
+                'AUD': 'A$',
+                'PHP': '₱',
+                'INR': '₹',
+                'COP': 'COL$'
+            }[currency] || currency + ' ';
+            
+            if (['USD', 'AUD'].includes(currency)) {
+                return converted < 0.1 ? 
+                    `${symbol}${converted.toFixed(3)}` : 
+                    `${symbol}${converted.toFixed(2)}`;
+            } else {
+                return `${symbol}${Math.round(converted)}`;
+            }
+        }
+
+        // Update currency display
+        function updateCurrencyDisplay() {
+            const currency = document.getElementById('currency-select').value;
+            document.getElementById('total-price').textContent = formatCurrency(usdPrice, currency);
+        }
+
+        // Add event listener for currency changes
+        document.getElementById('currency-select').addEventListener('change', updateCurrencyDisplay);
+
+        // Enter key handler
+        document.getElementById('user-input').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') sendMessage();
+        });
+
+        // Initialize
         initializeDarkMode();
         document.getElementById('update-values').addEventListener('click', postKPIData);
         initializeColorPreviews();
         fetchKPIData();
+
+        // Load initial chat stats
+        fetch('/api/kpi-data?theme=ai')
+            .then(response => response.json())
+            .then(data => {
+                messagesSent = data.messages_sent || 0;
+                tokensUsed = data.tokens_used || 0;
+                usdPrice = parseFloat(data.total_price) || 0;
+
+                document.getElementById('messages-sent').textContent = messagesSent;
+                document.getElementById('tokens-used').textContent = tokensUsed;
+
+                usdPrice = parseFloat(data.total_price)
+
+                const currency = data.currency || document.getElementById('currency-select').value;
+                document.getElementById('total-price').textContent = formatCurrency(usdPrice, currency);
+
+                updateCurrencyDisplay();
+            });
+
+            // Initialize currency selector
+            document.getElementById('currency-select').addEventListener('change', function() {
+            localStorage.setItem('preferredCurrency', this.value);
+            updateCurrencyDisplay();
+        });
+            // Load saved preference
+            const savedCurrency = localStorage.getItem('preferredCurrency') || 'USD';
+            document.getElementById('currency-select').value = savedCurrency;
+
+            document.getElementById('currency-select').addEventListener('change', function() {
+            localStorage.setItem('preferredCurrency', this.value);
+            updateCurrencyDisplay();
+            });
+
+            document.addEventListener('DOMContentLoaded', function() {
+                const savedCurrency = localStorage.getItem('preferredCurrency') || 'USD';
+                document.getElementById('currency-select').value = savedCurrency;
+                
+                // If we already have a price, update the display
+                if (usdPrice > 0) {
+                    updateCurrencyDisplay();
+                }
+            });
     </script>    
 </body>
 </html>
+ 

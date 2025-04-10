@@ -37,3 +37,33 @@ class PixooService:
             print("Image sent to device")
         except Exception as e:
             print(f"Error updating Pixoo display: {e}")
+    
+    def draw_tokens_used(self, tokens_used):
+        try:
+            self.clear()
+            
+            # Background gradient
+            for y in range(64):
+                self.set_color(0, 0, min(255, y*4))
+                self.draw_line((0, y), (63, y))
+            
+            # Main text
+            self.set_color(255, 255, 255)
+            self.draw_text("AI RESPONSE", (5, 5), 1)
+            
+            # Tokens display
+            self.set_color(0, 255, 0)
+            self.draw_text(f"TOKENS USED:", (5, 20), 1)
+            self.set_color(255, 255, 0)
+            self.draw_text(f"{tokens_used}", (5, 30), 2)  # Bigger font
+            
+            # Visual indicator
+            token_bar = min(63, int(tokens_used / 10))  # Scale for display
+            self.set_color(255, 0, 0)
+            self.draw_filled_rectangle((0, 50), (token_bar, 58))
+            
+            self.push()
+            return True
+        except Exception as e:
+            print(f"Error drawing tokens: {e}")
+            return False

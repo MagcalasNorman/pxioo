@@ -15,3 +15,6 @@ class Config:
         "India": "Asia/Kolkata",
         "Colombia": "America/Bogota",
     }
+
+    DIFY_API_KEY = os.getenv('DIFY_API_KEY', '')
+    DIFY_API_URL = os.getenv('DIFY_API_URL', 'https://aibot.cloudstaff.io/v1/chat-messages')

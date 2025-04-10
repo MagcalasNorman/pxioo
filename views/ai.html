@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat Interface</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f9;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        .chat-container {
+            width: 100%;
+            max-width: 600px;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            height: 80vh;
+        }
+        .chat-header {
+            padding: 16px;
+            background: #007bff;
+            color: #fff;
+            border-top-left-radius: 8px;
+            border-top-right-radius: 8px;
+            text-align: center;
+            font-size: 18px;
+            font-weight: bold;
+        }
+        .chat-messages {
+            flex: 1;
+            padding: 16px;
+            overflow-y: auto;
+            border-bottom: 1px solid #ddd;
+            display: flex;
+            flex-direction: column;
+        }
+        .message {
+            margin-bottom: 12px;
+            padding: 8px 12px;
+            border-radius: 8px;
+            max-width: 70%;
+            position: relative;
+        }
+        .message.user {
+            background: #007bff;
+            color: #fff;
+            align-self: flex-end; /* Align user messages to the right */
+        }
+        .message.bot {
+            background: #f1f1f1;
+            color: #333;
+            align-self: flex-start; /* Align bot messages to the left */
+        }
+        .chat-stats {
+            padding: 8px 16px;
+            border-top: 1px solid #ddd;
+            display: flex;
+            justify-content: space-between;
+            background: #f9f9f9;
+        }
+        .chat-stats div {
+            font-size: 14px;
+            color: #555;
+        }
+        .chat-input {
+            display: flex;
+            padding: 16px;
+            border-top: 1px solid #ddd;
+        }
+        .chat-input input {
+            flex: 1;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-right: 8px;
+        }
+        .chat-input button {
+            padding: 8px 16px;
+            background: #007bff;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .chat-input button:hover {
+            background: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <div class="chat-header">
+            Chat with AI
+        </div>
+        <div class="chat-messages" id="chat-messages">
+            <!-- Messages will be dynamically added here -->
+        </div>
+        <div class="chat-stats" id="chat-stats">
+            <div>Messages Sent: <span id="messages-sent">0</span></div>
+            <div>Tokens Used: <span id="tokens-used">0</span></div>
+        </div>
+        <div class="chat-input">
+            <input type="text" id="user-input" placeholder="Type your message...">
+            <button onclick="sendMessage()">Send</button>
+        </div>
+    </div>
+
+    <script>
+        let messagesSent = 0;
+        let tokensUsed = 0;
+        let promptTime = 0;
+
+        function updatePixooDisplay(messagesSent, tokensUsed, promptTime) {
+            fetch('/update-pixoo', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    messages_sent: messagesSent,
+                    tokens_used: tokensUsed,
+                    prompt_time: promptTime,
+                }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('Pixoo display updated:', data);
+            })
+            .catch(error => {
+                console.error('Error updating Pixoo display:', error);
+            });
+        }
+
+        function saveDataToCSV(messagesSent, tokensUsed, promptTime) {
+            const data = {
+                messages_sent: messagesSent,
+                tokens_used: tokensUsed,
+                prompt_time: promptTime,
+            };
+
+            fetch('/save-data', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data),
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('Data saved:', data);
+            })
+            .catch(error => {
+                console.error('Error saving data:', error);
+            });
+        }
+    </script>
+</body>
+</html>
